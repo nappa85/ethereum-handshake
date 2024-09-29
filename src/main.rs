@@ -1,9 +1,10 @@
 use std::net::SocketAddr;
 
 use clap::Parser;
+use ethereum_handshake::{Error, TIMEOUT};
 use ethereum_types::{H128, H256};
 use secp256k1::{PublicKey, SecretKey};
-use tokio::net::TcpStream;
+use tokio::{net::TcpStream, time::timeout};
 
 /// Ethereum P2P Handshake
 #[derive(Parser, Debug)]
@@ -38,11 +39,15 @@ struct Args {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), ethereum_handshake::Error> {
+async fn main() -> Result<(), Error> {
+    tracing_subscriber::fmt::init();
+
     let args = Args::parse();
 
-    let mut socket = TcpStream::connect(args.addr).await?;
-    ethereum_handshake::handshake(
+    let mut socket = timeout(TIMEOUT, TcpStream::connect(args.addr))
+        .await
+        .map_err(|_| Error::ConnectionTimeout)??;
+    let _secrets = ethereum_handshake::handshake(
         &mut socket,
         args.remote_public_key,
         args.private_key
@@ -54,5 +59,7 @@ async fn main() -> Result<(), ethereum_handshake::Error> {
             .unwrap_or_else(|| SecretKey::new(&mut secp256k1::rand::thread_rng())),
         args.iv.unwrap_or_else(H128::random),
     )
-    .await
+    .await?;
+
+    Ok(())
 }

@@ -31,11 +31,16 @@ Options:
 Mandatory parameters are remote addr and remote public key, e.g.
 
 ```bash
-cargo run 65.21.224.171:30303 00e6f58d28f907f0ffdce7666289107f7cdfacf55611feb8f208639e9deddee90408b5357d82fe3be328a323c4bd129b85b33cd7a494afbedd6a2e87ca8a56a1
+cargo run 52.59.248.41:30303 1cb2a31b7f39f069a29d719f01fd7fc711b85e07f416b64aa0e9e3ed55dc317d431c1361e76c33a2354ed11b183e9e4596443babf8f98fd80cc469c3b99a7264
 ```
 
 Any other parameter is optional and can be used to gain a good level of reproducibility when testing against a node you
 can control too.
+
+## Bootnodes
+
+Bootnodes list can be found [here](https://github.com/ethereum/go-ethereum/blob/master/params/bootnodes.go#L23),
+an updated list of active servers can be found [here](https://ethernodes.org/nodes).
 
 ## Handshake conclusion
 
@@ -43,6 +48,12 @@ Citing documentation `cryptographic handshake is complete if MAC of first encryp
 
 That means that handshake can be considered complete if the application doesn't return any error,
 the error `Invalid Mac` followed by an hexadecimal value would precisely mean this check failed.
+
+To see a successful handshake output, set the env var `RUST_LOG=info`, e.g.
+
+```bash
+RUST_LOG=info cargo run 52.59.248.41:30303 1cb2a31b7f39f069a29d719f01fd7fc711b85e07f416b64aa0e9e3ed55dc317d431c1361e76c33a2354ed11b183e9e4596443babf8f98fd80cc469c3b99a7264
+```
 
 ## Acknowledgments
 

@@ -1,6 +1,6 @@
 use rlp::{Decodable, DecoderError, Encodable};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Body {
     reason: Reason,
 }
@@ -26,7 +26,7 @@ impl Decodable for Body {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 #[repr(u64)]
 pub enum Reason {
     DisconnectRequested = 0,

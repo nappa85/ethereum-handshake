@@ -5,6 +5,7 @@ use hmac::{Hmac, Mac};
 use rlp::{Decodable, Encodable, Rlp};
 use secp256k1::{ecdh, PublicKey, SecretKey, SECP256K1};
 use sha2::{Digest, Sha256};
+use tracing::debug;
 
 use crate::Error;
 
@@ -135,6 +136,8 @@ impl Ecies {
 
         let mut decryptor = Aes128Ctr64BE::new(encrypted_key.as_ref().into(), iv.as_ref().into());
         decryptor.apply_keystream(encrypted_data);
+
+        debug!("Decrypted bynary data {encrypted_data:?}");
 
         let rlp = Rlp::new(&encrypted_data);
         Ok(T::decode(&rlp)?)

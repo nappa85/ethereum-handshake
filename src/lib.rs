@@ -1,4 +1,4 @@
-use std::{borrow::Cow, io};
+use std::{io, time::Duration};
 
 use bytes::{Bytes, BytesMut};
 use ethereum_types::{H128, H256};
@@ -6,7 +6,11 @@ use secp256k1::{PublicKey, SecretKey};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::TcpStream,
+    time::timeout,
 };
+use tracing::info;
+
+pub const TIMEOUT: Duration = Duration::from_secs(60);
 
 mod ecies;
 mod message;
@@ -27,12 +31,16 @@ pub enum Error {
     Mac(H128),
     #[error("Payload too big")]
     PayloadTooBig,
+    #[error("Connection timeout")]
+    ConnectionTimeout,
+    #[error("Read timeout")]
+    ReadTimeout,
     #[error("IO error: {0}")]
     Io(#[from] io::Error),
     #[error("TCP connection closed")]
     TcpConnectionClosed,
-    #[error("Invalid auth response")]
-    InvalidAuthResponse,
+    #[error("No auth response")]
+    NoAuthResponse,
     #[error("No Hello/Disconnect message")]
     NoHello,
     #[error("Invalid decoded value: {0}")]
@@ -47,7 +55,7 @@ pub async fn handshake(
     nonce: H256,
     random_secret_key: SecretKey,
     iv: H128,
-) -> Result<(), Error> {
+) -> Result<secrets::Secrets, Error> {
     let ecies = ecies::Ecies::new(remote_public_key, private_key, private_ephemeral_key, nonce);
 
     let auth = message::auth::Body::init(
@@ -66,10 +74,12 @@ pub async fn handshake(
     }
 
     let mut buf = [0; 1024];
-    let resp = socket.read(&mut buf).await?;
+    let resp = timeout(TIMEOUT, socket.read(&mut buf))
+        .await
+        .map_err(|_| Error::ReadTimeout)??;
 
     if resp == 0 {
-        return Err(Error::InvalidAuthResponse);
+        return Err(Error::NoAuthResponse);
     }
 
     // here we received both ack and hello/disconnect, now we need only the ack, but we need to copy the buffer before it's decrypted
@@ -91,22 +101,7 @@ pub async fn handshake(
     }
 
     let msg = secrets.read_frame::<message::Body>(&mut buf[bytes_used as usize..resp])?;
-    println!("received {msg:?}");
+    info!("received {msg:?}");
 
-    Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn msg() {
-        let msg = super::message::Body::Hello(super::message::hello::Body::new(crate::parse::public_key("00e6f58d28f907f0ffdce7666289107f7cdfacf55611feb8f208639e9deddee90408b5357d82fe3be328a323c4bd129b85b33cd7a494afbedd6a2e87ca8a56a1").unwrap()));
-
-        let msg = super::message::Body::Disconnect(super::message::disconnect::Body::new(
-            super::message::disconnect::Reason::TooManyPeers,
-        ));
-
-        let rlp = rlp::Rlp::new(&[1, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-        let _: super::message::disconnect::Body = dbg!(rlp.as_val()).unwrap();
-    }
+    Ok(secrets)
 }

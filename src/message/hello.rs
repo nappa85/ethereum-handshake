@@ -12,7 +12,7 @@ use secp256k1::PublicKey;
 /// capabilities is the list of supported capabilities and their versions: [[cap1, capVersion1], [cap2, capVersion2], ...].
 /// listenPort (legacy) specifies the port that the client is listening on (on the interface that the present connection traverses). If 0 it indicates the client is not listening. This field should be ignored.
 /// nodeId is the secp256k1 public key corresponding to the node's private key.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Body<'a> {
     protocol_version: u64,
     client_id: Cow<'a, str>,
@@ -48,11 +48,11 @@ impl<'a> Encodable for Body<'a> {
 
 impl<'a> Decodable for Body<'a> {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, DecoderError> {
-        let protocol_version: u64 = dbg!(rlp.val_at(1))?;
-        let client_id: String = dbg!(rlp.val_at(2))?;
-        let capabilities: Vec<Capability> = dbg!(rlp.list_at(3))?;
-        let port: u16 = dbg!(rlp.val_at(4))?;
-        let node_id: Vec<u8> = dbg!(rlp.val_at(5))?;
+        let protocol_version: u64 = rlp.val_at(0)?;
+        let client_id: String = rlp.val_at(1)?;
+        let capabilities: Vec<Capability> = rlp.list_at(2)?;
+        let port: u16 = rlp.val_at(3)?;
+        let node_id: Vec<u8> = rlp.val_at(4)?;
 
         let mut s = [0_u8; 65];
         s[0] = 4;
@@ -70,7 +70,7 @@ impl<'a> Decodable for Body<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Capability<'a> {
     pub name: Cow<'a, str>,
     pub version: u64,

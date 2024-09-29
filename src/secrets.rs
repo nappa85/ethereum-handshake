@@ -6,6 +6,7 @@ use bytes::{Bytes, BytesMut};
 use ethereum_types::{H128, H256};
 use rlp::{Decodable, Encodable, Rlp};
 use sha3::{Digest, Keccak256};
+use tracing::debug;
 
 pub type Aes256Ctr64BE = ctr::Ctr64BE<Aes256>;
 
@@ -193,6 +194,8 @@ impl Secrets {
         }
 
         self.ingress_aes.apply_keystream(frame_data);
+
+        debug!("Decrypted frame data {frame_data:?}");
 
         let rlp = Rlp::new(frame_data);
         Ok(T::decode(&rlp)?)
